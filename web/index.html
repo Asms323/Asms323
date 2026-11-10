@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
+<title>Pocket AI</title>
+<meta name="description" content="A private AI chat that runs entirely on your phone.">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Pocket AI">
+<meta name="theme-color" content="#0f0d1a">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" href="icon-192.png">
+<link rel="manifest" href="manifest.webmanifest">
+<style>
+  :root {
+    --bg: #f6f5fb; --surface: #ffffff; --surface-2: #ecebf5; --text: #17151f; --muted: #6b6880;
+    --accent: #6a4cf2; --accent-text: #ffffff; --border: #dddbe8; --danger: #c53030;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0f0d1a; --surface: #1a1828; --surface-2: #25223a; --text: #eeedf5; --muted: #9a97b0;
+      --accent: #8b72ff; --accent-text: #ffffff; --border: #2f2c45; --danger: #ff6b6b;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0f0d1a; --surface: #1a1828; --surface-2: #25223a; --text: #eeedf5; --muted: #9a97b0;
+    --accent: #8b72ff; --accent-text: #ffffff; --border: #2f2c45; --danger: #ff6b6b;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; }
+  body {
+    background: var(--bg); color: var(--text);
+    font: 16px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    display: flex; flex-direction: column; height: 100dvh;
+    padding: env(safe-area-inset-top) env(safe-area-inset-right) 0 env(safe-area-inset-left);
+  }
+  header {
+    display: flex; align-items: center; gap: 10px; padding: 10px 16px;
+    border-bottom: 1px solid var(--border); background: var(--surface);
+  }
+  header img { width: 28px; height: 28px; border-radius: 7px; }
+  header h1 { font-size: 17px; margin: 0; flex: 1; }
+  header .model { font-size: 12px; color: var(--muted); }
+  .icon-btn {
+    background: none; border: 0; color: var(--accent); font-size: 15px; padding: 6px 8px; cursor: pointer;
+  }
+  .icon-btn:disabled { color: var(--muted); opacity: .5; }
+  main { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 16px; }
+  .setup { max-width: 520px; margin: 0 auto; }
+  .setup h2 { font-size: 22px; margin: 8px 0 4px; }
+  .setup p { color: var(--muted); margin: 0 0 16px; }
+  .models { display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px; }
+  .model-opt {
+    display: flex; gap: 12px; align-items: flex-start; padding: 12px 14px; border-radius: 14px;
+    background: var(--surface); border: 1.5px solid var(--border); cursor: pointer;
+  }
+  .model-opt:has(input:checked) { border-color: var(--accent); }
+  .model-opt input { margin-top: 4px; accent-color: var(--accent); }
+  .model-opt b { display: block; }
+  .model-opt span { font-size: 13px; color: var(--muted); }
+  .primary {
+    width: 100%; padding: 14px; border: 0; border-radius: 14px; background: var(--accent);
+    color: var(--accent-text); font-size: 17px; font-weight: 600; cursor: pointer;
+  }
+  .primary:disabled { opacity: .5; }
+  .progress { margin-top: 16px; display: none; }
+  .bar { height: 8px; border-radius: 4px; background: var(--surface-2); overflow: hidden; }
+  .bar > div { height: 100%; width: 0; background: var(--accent); transition: width .2s; }
+  .progress small { display: block; margin-top: 8px; color: var(--muted); font-size: 13px; word-break: break-word; }
+  .error {
+    display: none; margin-top: 16px; padding: 12px 14px; border-radius: 12px;
+    background: var(--surface); border: 1px solid var(--danger); color: var(--danger); font-size: 14px;
+  }
+  .note { font-size: 12px; color: var(--muted); margin-top: 14px; text-align: center; }
+  .msgs { display: flex; flex-direction: column; gap: 10px; max-width: 720px; margin: 0 auto; }
+  .msg {
+    max-width: 85%; padding: 10px 14px; border-radius: 18px; white-space: pre-wrap; word-wrap: break-word;
+  }
+  .msg.user { align-self: flex-end; background: var(--accent); color: var(--accent-text); border-bottom-right-radius: 6px; }
+  .msg.bot { align-self: flex-start; background: var(--surface); border: 1px solid var(--border); border-bottom-left-radius: 6px; }
+  .msg.bot:empty::after { content: "…"; color: var(--muted); }
+  .hint { text-align: center; color: var(--muted); font-size: 13px; margin: 24px 0; }
+  .stats { text-align: center; color: var(--muted); font-size: 11px; min-height: 14px; margin-top: 6px; }
+  form {
+    display: none; gap: 8px; align-items: flex-end; padding: 8px 12px calc(8px + env(safe-area-inset-bottom));
+    border-top: 1px solid var(--border); background: var(--surface);
+  }
+  textarea {
+    flex: 1; resize: none; max-height: 140px; padding: 10px 14px; border-radius: 20px;
+    border: 1px solid var(--border); background: var(--bg); color: var(--text);
+    font: inherit; font-size: 16px; /* 16px stops iOS zooming on focus */
+  }
+  .send {
+    width: 40px; height: 40px; border-radius: 50%; border: 0; background: var(--accent);
+    color: var(--accent-text); font-size: 18px; cursor: pointer; flex-shrink: 0;
+  }
+  .send:disabled { opacity: .4; }
+</style>
+</head>
+<body>
+<header>
+  <img src="icon-180.png" alt="">
+  <div style="flex:1">
+    <h1>Pocket AI</h1>
+    <div class="model" id="modelLabel">Runs privately on your phone</div>
+  </div>
+  <button class="icon-btn" id="newChat" disabled>New chat</button>
+  <button class="icon-btn" id="switchModel" style="display:none">Model</button>
+</header>
+
+<main id="main">
+  <section class="setup" id="setup">
+    <h2>Pick a model</h2>
+    <p>It downloads once, then runs on your phone's GPU. Your chats never leave your device.</p>
+    <div class="models" id="models"></div>
+    <button class="primary" id="start">Download &amp; start</button>
+    <div class="progress" id="progress">
+      <div class="bar"><div id="barFill"></div></div>
+      <small id="progressText">Starting…</small>
+    </div>
+    <div class="error" id="error"></div>
+    <div class="note">Needs iOS 26 or newer with Safari (or Chrome on Android). Use Wi-Fi for the first download.</div>
+  </section>
+  <div class="msgs" id="msgs" hidden></div>
+  <div class="stats" id="stats"></div>
+</main>
+
+<form id="form">
+  <textarea id="input" rows="1" placeholder="Message" enterkeyhint="send"></textarea>
+  <button class="send" id="send" type="submit" aria-label="Send">↑</button>
+</form>
+
+<script type="module">
+import { CreateMLCEngine } from "https://cdn.jsdelivr.net/npm/@mlc-ai/web-llm@0.2.84/+esm";
+
+// Each entry has an f16 build (faster) and an f32 build for GPUs without 16-bit float support.
+const MODELS = [
+  { key: "Qwen2.5-0.5B-Instruct", name: "Qwen 2.5 · 0.5B", size: "~400 MB", note: "Fastest. Works on most phones." },
+  { key: "Llama-3.2-1B-Instruct", name: "Llama 3.2 · 1B", size: "~900 MB", note: "Good balance of speed and quality." },
+  { key: "Qwen2.5-1.5B-Instruct", name: "Qwen 2.5 · 1.5B", size: "~1.2 GB", note: "Smarter. iPhone 15 or newer." },
+  { key: "Llama-3.2-3B-Instruct", name: "Llama 3.2 · 3B", size: "~2.3 GB", note: "Best answers. iPhone 15 Pro or newer; may crash on older phones." },
+];
+const SYSTEM = "You are Pocket AI, a helpful and concise assistant running privately on the user's phone.";
+
+const $ = (id) => document.getElementById(id);
+const store = {
+  get(k) { try { return localStorage.getItem(k); } catch { return null; } },
+  set(k, v) { try { localStorage.setItem(k, v); } catch {} },
+};
+
+let engine = null;
+let history = [];
+let busy = false;
+let currentModel = null;
+
+// Model picker
+const saved = store.get("pocketai-model") || MODELS[0].key;
+$("models").innerHTML = MODELS.map((m) => `
+  <label class="model-opt">
+    <input type="radio" name="model" value="${m.key}" ${m.key === saved ? "checked" : ""}>
+    <div><b>${m.name} · ${m.size}</b><span>${m.note}</span></div>
+  </label>`).join("");
+
+function showError(msg) {
+  $("error").textContent = msg;
+  $("error").style.display = "block";
+}
+
+async function pickVariant(key) {
+  if (!navigator.gpu) {
+    throw new Error("This browser doesn't support WebGPU, so it can't run AI models. On iPhone, update to iOS 26 or newer and open this page in Safari. On Android, use the latest Chrome.");
+  }
+  const adapter = await navigator.gpu.requestAdapter();
+  if (!adapter) throw new Error("Couldn't access your phone's GPU. Close other apps and reload the page.");
+  return `${key}-${adapter.features.has("shader-f16") ? "q4f16_1" : "q4f32_1"}-MLC`;
+}
+
+async function start() {
+  const key = document.querySelector('input[name="model"]:checked').value;
+  store.set("pocketai-model", key);
+  $("error").style.display = "none";
+  $("start").disabled = true;
+  $("progress").style.display = "block";
+  try {
+    const modelId = await pickVariant(key);
+    if (engine) { await engine.unload(); engine = null; }
+    engine = await CreateMLCEngine(modelId, {
+      initProgressCallback: (r) => {
+        $("barFill").style.width = `${Math.round((r.progress || 0) * 100)}%`;
+        $("progressText").textContent = r.text;
+      },
+    });
+    currentModel = MODELS.find((m) => m.key === key);
+    $("modelLabel").textContent = `${currentModel.name} · on-device`;
+    openChat();
+  } catch (e) {
+    console.error(e);
+    showError(e?.message || String(e));
+    $("start").disabled = false;
+    $("progress").style.display = "none";
+  }
+}
+
+function openChat() {
+  $("setup").hidden = true;
+  $("msgs").hidden = false;
+  $("form").style.display = "flex";
+  $("newChat").disabled = false;
+  $("switchModel").style.display = "";
+  resetChat();
+}
+
+function resetChat() {
+  history = [{ role: "system", content: SYSTEM }];
+  $("msgs").innerHTML = `<div class="hint">Running ${currentModel.name} on your phone. Ask me anything.</div>`;
+  $("stats").textContent = "";
+  engine?.resetChat?.();
+}
+
+function addBubble(role, text) {
+  const hint = $("msgs").querySelector(".hint");
+  if (hint) hint.remove();
+  const el = document.createElement("div");
+  el.className = `msg ${role}`;
+  el.textContent = text;
+  $("msgs").appendChild(el);
+  scrollDown();
+  return el;
+}
+
+function scrollDown() { $("main").scrollTop = $("main").scrollHeight; }
+
+function setBusy(on) {
+  busy = on;
+  $("send").textContent = on ? "■" : "↑";
+  $("send").setAttribute("aria-label", on ? "Stop" : "Send");
+  $("newChat").disabled = on;
+}
+
+async function send(text) {
+  history.push({ role: "user", content: text });
+  addBubble("user", text);
+  const bubble = addBubble("bot", "");
+  setBusy(true);
+  let reply = "";
+  const t0 = performance.now();
+  let tokens = 0;
+  try {
+    const stream = await engine.chat.completions.create({
+      messages: history, stream: true, temperature: 0.7, top_p: 0.9, max_tokens: 1024,
+    });
+    for await (const chunk of stream) {
+      const delta = chunk.choices[0]?.delta?.content || "";
+      if (delta) {
+        reply += delta;
+        tokens++;
+        bubble.textContent = reply;
+        $("stats").textContent = `${(tokens / ((performance.now() - t0) / 1000)).toFixed(1)} tokens/s`;
+        scrollDown();
+      }
+    }
+  } catch (e) {
+    console.error(e);
+    reply += `\n\n⚠️ ${e?.message || e}`;
+    bubble.textContent = reply;
+  }
+  history.push({ role: "assistant", content: reply });
+  setBusy(false);
+}
+
+$("start").addEventListener("click", start);
+$("newChat").addEventListener("click", resetChat);
+$("switchModel").addEventListener("click", () => {
+  if (busy) return;
+  $("setup").hidden = false;
+  $("msgs").hidden = true;
+  $("form").style.display = "none";
+  $("switchModel").style.display = "none";
+  $("start").disabled = false;
+  $("progress").style.display = "none";
+  $("main").scrollTop = 0;
+});
+
+const input = $("input");
+input.addEventListener("input", () => {
+  input.style.height = "auto";
+  input.style.height = Math.min(input.scrollHeight, 140) + "px";
+});
+input.addEventListener("keydown", (e) => {
+  if (e.key === "Enter" && !e.shiftKey && !e.isComposing) { e.preventDefault(); $("form").requestSubmit(); }
+});
+$("form").addEventListener("submit", (e) => {
+  e.preventDefault();
+  if (busy) { engine.interruptGenerate(); return; }
+  const text = input.value.trim();
+  if (!text || !engine) return;
+  input.value = "";
+  input.style.height = "auto";
+  send(text);
+});
+</script>
+</body>
+</html>
